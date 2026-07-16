@@ -23,7 +23,7 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-export default function Sidebar({ activeModule, onModuleChange, userRole, onLogout }: SidebarProps) {
+export default function Sidebar({ activeModule, onModuleChange, userRole, onLogout, activeUsername = '' }: SidebarProps & { activeUsername?: string }) {
   const menuItems = [
     { id: 'direccion', label: '1. Dirección y Estrategia', icon: Target, roles: ['Admin'] },
     { id: 'ingenieria', label: '2. Diseño e Ingeniería', icon: Ruler, roles: ['Admin', 'Operador'] },
@@ -91,11 +91,11 @@ export default function Sidebar({ activeModule, onModuleChange, userRole, onLogo
       <div className="p-4 bg-[#111a2f]/40 border-t border-white/5 space-y-3">
         <div className="flex items-center gap-3 p-2 rounded-lg bg-[#111a2f]/60 border border-slate-800/40">
           <div className="w-10 h-10 bg-[#080f1e] text-white border border-slate-700/50 rounded-full flex items-center justify-center font-bold text-sm shadow-inner">
-            {userRole === 'Admin' ? 'AD' : 'OP'}
+            {activeUsername.slice(0, 2).toUpperCase() || (userRole === 'Admin' ? 'AD' : 'OP')}
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-semibold text-slate-200 truncate leading-tight">
-              {userRole === 'Admin' ? 'Administrador' : 'Operador Taller'}
+              {activeUsername || (userRole === 'Admin' ? 'Administrador' : 'Operador Taller')}
             </span>
             <span className={`text-[10px] font-bold uppercase tracking-wider mt-0.5
               ${userRole === 'Admin' ? 'text-emerald-400' : 'text-amber-400'}`}>

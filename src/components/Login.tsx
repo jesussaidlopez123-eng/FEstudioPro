@@ -20,15 +20,16 @@ export default function Login({ onLogin, users = [] }: LoginProps) {
     setLoading(true);
     setError('');
 
-    setTimeout(() => {
+    // setTimeout(() => {
       const user = users.find(u => u.username === username);
+      const enteredPassword = password.trim();
       if (!user) {
         setError('Usuario no encontrado');
         setLoading(false);
         return;
       }
       
-      if (user.passwordHash !== password) {
+      if (user.passwordHash.trim() !== enteredPassword) {
         setError('Contraseña incorrecta');
         setLoading(false);
         return;
@@ -36,7 +37,7 @@ export default function Login({ onLogin, users = [] }: LoginProps) {
 
       onLogin(user.role, user.username);
       setLoading(false);
-    }, 600);
+    // }, 600);
   };
 
   return (
@@ -61,7 +62,7 @@ export default function Login({ onLogin, users = [] }: LoginProps) {
           </span>
         </div>
 
-        <form onSubmit={handleSubmit} className="text-left space-y-5">
+        <form onSubmit={(e) => e.preventDefault()} className="text-left space-y-5">
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">
               Usuario de Acceso
@@ -126,7 +127,8 @@ export default function Login({ onLogin, users = [] }: LoginProps) {
           )}
 
           <button
-            type="submit"
+            type="button"
+            onClick={handleSubmit}
             disabled={loading}
             className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white font-semibold text-sm rounded-lg shadow-lg hover:shadow-blue-500/10 cursor-pointer transition-all duration-300 flex items-center justify-center gap-2"
             id="login-submit-button"

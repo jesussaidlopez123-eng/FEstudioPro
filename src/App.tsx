@@ -40,51 +40,57 @@ import ModuleMarketing from './components/ModuleMarketing';
 import ModuleConfiguracion from './components/ModuleConfiguracion';
 import { syncToGoogleSheets } from './lib/googleSheets';
 
+
+// Safe local storage helper
+const safeGetItem = (key: string) => {
+  try { return safeGetItem(key); } catch (e) { return null; }
+};
+const safeSetItem = (key: string, value: string) => {
+  try { safeSetItem(key, value); } catch (e) { console.warn('LocalStorage disabled'); }
+};
+
+
+const safeRemoveItem = (key: string) => {
+  try { safeRemoveItem(key); } catch (e) { console.warn('LocalStorage disabled'); }
+};
 export default function App() {
   // Authentication State
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('f_estudio_is_logged_in') === 'true';
-  });
+  const [isAppLoaded, setIsAppLoaded] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [activeUsername, setActiveUsername] = useState<string>('');
-  const [userRole, setUserRole] = useState<UserRole>(() => {
-    return (localStorage.getItem('f_estudio_user_role') as UserRole) || 'Admin';
-  });
+  const [userRole, setUserRole] = useState<UserRole>('Admin');
 
   // ERP Core Databases States (Lazy loaded from localStorage with default initial fallback)
-  const [fichasTecnicas, setFichasTecnicas] = useState<FichaTecnica[]>(() => {
-    const data = localStorage.getItem('f_estudio_db_v2_fichas');
-    return data ? JSON.parse(data) : initialFichasTecnicas;
-  });
+  const [fichasTecnicas, setFichasTecnicas] = useState<FichaTecnica[]>(initialFichasTecnicas);
 
-  const [orders, setOrders] = useState<SalesOrder[]>(() => {
-    const data = localStorage.getItem('f_estudio_db_v2_orders');
-    return data ? JSON.parse(data) : initialSalesOrders;
-  });
+  const [orders, setOrders] = useState<SalesOrder[]>(initialSalesOrders);
 
-  const [productionTasks, setProductionTasks] = useState<ProductionTask[]>(() => {
-    const data = localStorage.getItem('f_estudio_db_v2_tasks');
-    return data ? JSON.parse(data) : initialProductionTasks;
-  });
+  const [productionTasks, setProductionTasks] = useState<ProductionTask[]>(initialProductionTasks);
 
-  const [transactions, setTransactions] = useState<FinancialTransaction[]>(() => {
-    const data = localStorage.getItem('f_estudio_db_v2_transactions');
-    return data ? JSON.parse(data) : initialFinancialTransactions;
-  });
+  const [transactions, setTransactions] = useState<FinancialTransaction[]>(initialFinancialTransactions);
 
-  const [alerts, setAlerts] = useState<SystemAlert[]>(() => {
-    const data = localStorage.getItem('f_estudio_db_v2_alerts');
-    return data ? JSON.parse(data) : initialSystemAlerts;
-  });
+  const [alerts, setAlerts] = useState<SystemAlert[]>(initialSystemAlerts);
 
   
   const [users, setUsers] = useState<AppUser[]>(() => {
-    const data = localStorage.getItem('f_estudio_db_v2_users');
-    return data ? JSON.parse(data) : initialUsers;
+    const data = safeGetItem('f_estudio_db_v2_users');
+    let parsedUsers = data ? JSON.parse(data) : initialUsers;
+    
+    // Auto-migrate "operador1" to "Jorge Salmero" in user's browser localStorage
+    parsedUsers = parsedUsers.map(u => 
+      u.username === 'operador1' ? { ...u, username: 'Jorge Salmero' } : u
+    );
+    
+    // Ensure initial users exist (admin and Jorge Salmero)
+    initialUsers.forEach(initU => {
+      if (!parsedUsers.find(u => u.id === initU.id || u.username === initU.username)) {
+        parsedUsers.push(initU);
+      }
+    });
+
+    return parsedUsers;
   });
-const [okrs, setOkrs] = useState<OKR[]>(() => {
-    const data = localStorage.getItem('f_estudio_db_v2_okrs');
-    return data ? JSON.parse(data) : initialOKRs;
-  });
+const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
 
   // Navigation & Drawer UI states
   const [activeModule, setActiveModule] = useState<string>('direccion');
@@ -93,69 +99,34 @@ const [okrs, setOkrs] = useState<OKR[]>(() => {
   // Synchronize States to LocalStorage
   useEffect(() => {
     try {
-      localStorage.setItem('f_estudio_is_logged_in', isLoggedIn.toString());
-      localStorage.setItem('f_estudio_user_role', userRole);
+      safeSetItem('f_estudio_is_logged_in', isLoggedIn.toString());
+      safeSetItem('f_estudio_user_role', userRole);
+      safeSetItem('f_estudio_active_username', activeUsername);
     } catch (e) {
       console.error('Failed to save auth state to localStorage', e);
     }
-  }, [isLoggedIn, userRole]);
+  }, [isLoggedIn, userRole, activeUsername]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('f_estudio_db_v2_fichas', JSON.stringify(fichasTecnicas));
+      safeSetItem('f_estudio_db_v2_fichas', JSON.stringify(fichasTecnicas));
     } catch (e) {
       console.error('Failed to save fichas to localStorage. Might be exceeding quota.', e);
       alert('Error: No se pudo guardar en el almacenamiento local. Posible límite de memoria alcanzado por imágenes muy grandes.');
     }
   }, [fichasTecnicas]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('f_estudio_db_v2_orders', JSON.stringify(orders));
-    } catch (e) {
-      console.error('Failed to save orders', e);
-    }
-  }, [orders]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('f_estudio_db_v2_tasks', JSON.stringify(productionTasks));
-    } catch (e) {
-      console.error('Failed to save tasks', e);
-    }
-  }, [productionTasks]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('f_estudio_db_v2_transactions', JSON.stringify(transactions));
-    } catch (e) {
-      console.error('Failed to save transactions', e);
-    }
-  }, [transactions]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('f_estudio_db_v2_alerts', JSON.stringify(alerts));
-    } catch (e) {
-      console.error('Failed to save alerts', e);
-    }
-  }, [alerts]);
+  
 
   
-  useEffect(() => {
-    try {
-      localStorage.setItem('f_estudio_db_v2_users', JSON.stringify(users));
-    } catch (e) {
-      console.error('Failed to save users', e);
-    }
-  }, [users]);
-useEffect(() => {
-    try {
-      localStorage.setItem('f_estudio_db_v2_okrs', JSON.stringify(okrs));
-    } catch (e) {
-      console.error('Failed to save okrs', e);
-    }
-  }, [okrs]);
+
+  
+
+  
+
+  
+  
+
 
   // Handle Login / Logout Actions
   const handleLogin = (role: UserRole, username: string) => {
@@ -172,8 +143,8 @@ useEffect(() => {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    localStorage.removeItem('f_estudio_is_logged_in');
-    localStorage.removeItem('f_estudio_user_role');
+    safeRemoveItem('f_estudio_is_logged_in');
+    safeRemoveItem('f_estudio_user_role');
   };
 
   // State Manipulators (Callbacks)
@@ -214,7 +185,7 @@ useEffect(() => {
         productName: `${newOrder.productName} (Pieza ${i} de ${newOrder.quantity})`,
         clientName: newOrder.clientName,
         status: 'Pendiente',
-        assignedTo: 'Oficina Central',
+        assignedTo: users.filter(u => u.role === 'Operador')[0]?.username || 'Oficina Central',
         notes: 'Planificado en taller automáticamente tras registro del pedido de ventas.',
         updatedAt: new Date().toISOString().split('T')[0],
         progress: 0,
@@ -263,7 +234,7 @@ useEffect(() => {
         productName: quantity > 1 ? `${ficha.name} (Pieza ${i} de ${quantity})` : ficha.name,
         clientName: clientName.trim() || 'Público General',
         status: 'Pendiente',
-        assignedTo: assignedTo || 'Jorge Salmero',
+        assignedTo: assignedTo || users.filter(u => u.role === 'Operador')[0]?.username || 'Oficina Central',
         notes: 'Envío manual desde Diseño e Ingeniería.',
         updatedAt: new Date().toISOString().split('T')[0],
         progress: 0,
@@ -280,7 +251,7 @@ useEffect(() => {
     handleAddAlert(
       'success',
       'Diseño en Fila de Taller',
-      `Se agregó "${ficha.name}" x${quantity} asignado a ${assignedTo || 'Jorge Salmero'} con ${initialSteps.length} instrucciones de trabajo.`
+      `Se agregó "${ficha.name}" x${quantity} asignado a ${assignedTo || users.filter(u => u.role === 'Operador')[0]?.username || 'Oficina Central'} con ${initialSteps.length} instrucciones de trabajo.`
     );
   };
 
@@ -466,8 +437,10 @@ useEffect(() => {
 
   const unreadAlertsCount = alerts.filter(a => !a.acknowledged).length;
 
+  if (!isAppLoaded) return <div className="h-screen bg-[#080f1e] flex items-center justify-center text-white font-bold">Cargando ERP...</div>;
+
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin as any} users={users} />;
+    return <Login onLogin={handleLogin} users={users} />;
   }
 
   // Header Title mapping based on active module view
@@ -487,6 +460,7 @@ useEffect(() => {
         activeModule={activeModule} 
         onModuleChange={setActiveModule} 
         userRole={userRole}
+        activeUsername={activeUsername}
         onLogout={handleLogout} 
       />
 
@@ -551,6 +525,7 @@ useEffect(() => {
 
           {activeModule === 'ingenieria' && (
             <ModuleIngenieria 
+              users={users}
               fichasTecnicas={fichasTecnicas}
               onAddFicha={handleAddFicha}
               onDeleteFicha={handleDeleteFicha}
@@ -565,6 +540,7 @@ useEffect(() => {
               onUpdateTaskStatus={handleUpdateTaskStatus}
               onUpdateTaskProgress={handleUpdateTaskProgress}
               userRole={userRole}
+              users={users}
               activeUsername={activeUsername}
               onPublishAlert={handleAddAlert}
               onAddTransaction={handleAddTransaction}

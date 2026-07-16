@@ -11,7 +11,7 @@ import {
   FileCode2, Sliders, ChevronRight, Menu, HelpCircle as HelpIcon, Layers,
   Paperclip
 } from 'lucide-react';
-import { FichaTecnica } from '../types';
+import { FichaTecnica, AppUser } from '../types';
 
 interface ModuleIngenieriaProps {
   fichasTecnicas: FichaTecnica[];
@@ -19,6 +19,7 @@ interface ModuleIngenieriaProps {
   onDeleteFicha: (id: string) => void;
   userRole: 'Admin' | 'Operador';
   onAddTaskToQueue: (ficha: FichaTecnica, clientName: string, quantity: number, assignedTo?: string) => void;
+  users?: AppUser[];
 }
 
 type DriveFolder = 'todos' | 'escritorios' | 'mesas' | 'credenzas_sillas';
@@ -28,7 +29,8 @@ export default function ModuleIngenieria({
   onAddFicha,
   onDeleteFicha,
   userRole,
-  onAddTaskToQueue
+  onAddTaskToQueue,
+  users = []
 }: ModuleIngenieriaProps) {
   const [selectedFicha, setSelectedFicha] = useState<FichaTecnica | null>(fichasTecnicas[0] || null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -40,7 +42,14 @@ export default function ModuleIngenieria({
   const [queueingFicha, setQueueingFicha] = useState<FichaTecnica | null>(null);
   const [queueClientName, setQueueClientName] = useState('Público General');
   const [queueQuantity, setQueueQuantity] = useState(1);
-  const [queueAssignedTo, setQueueAssignedTo] = useState('Jorge Salmero');
+  const defaultOperator = users.find(u => u.role === 'Operador')?.username || 'Sin Asignar';
+  const [queueAssignedTo, setQueueAssignedTo] = useState(defaultOperator);
+  React.useEffect(() => {
+    const operators = users.filter(u => u.role === 'Operador');
+    if (operators.length > 0 && !operators.find(u => u.username === queueAssignedTo)) {
+      setQueueAssignedTo(operators[0].username);
+    }
+  }, [users, queueAssignedTo]);
 
   // PDF Extraction Loading States
   const [isExtracting, setIsExtracting] = useState(false);
@@ -55,7 +64,13 @@ export default function ModuleIngenieria({
   const [dqInstrucciones, setDqInstrucciones] = useState('');
   const [dqClientName, setDqClientName] = useState('Público General');
   const [dqQuantity, setDqQuantity] = useState(1);
-  const [dqAssignedTo, setDqAssignedTo] = useState('Jorge Salmero');
+  const [dqAssignedTo, setDqAssignedTo] = useState(defaultOperator);
+  React.useEffect(() => {
+    const operators = users.filter(u => u.role === 'Operador');
+    if (operators.length > 0 && !operators.find(u => u.username === dqAssignedTo)) {
+      setDqAssignedTo(operators[0].username);
+    }
+  }, [users, dqAssignedTo]);
   const [dqPdfName, setDqPdfName] = useState('plano_diseno.pdf');
   const [dqPdfSize, setDqPdfSize] = useState('1.8 MB');
 
@@ -181,23 +196,32 @@ export default function ModuleIngenieria({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach((fileItem: any) => {
-        const file = fileItem as File;
+      const filesArray = Array.from(files);
+      for (let i = 0; i < filesArray.length; i++) {
+        const file = filesArray[i] as File;
         if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            if (typeof reader.result === 'string') {
-              setReferenceImages(prev => [...prev, reader.result as string]);
+          const formData = new FormData();
+          formData.append('image', file);
+          try {
+            const res = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData
+            });
+            if (res.ok) {
+              const data = await res.json();
+              setReferenceImages(prev => [...prev, data.url]);
               const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
               setReferenceImageNames(prev => [...prev, cleanName]);
             }
-          };
-          reader.readAsDataURL(file);
+          } catch (e) {
+            console.error('Image upload failed', e);
+            alert('Error al subir la imagen');
+          }
         }
-      });
+      }
     }
   };
 
@@ -1520,7 +1544,7 @@ export default function ModuleIngenieria({
           {/* CONFIRM QUEUE ADDITION MODAL (Activated by Drag-and-drop or clicking queue buttons) */}
           {queueingFicha && (
             <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-[110] p-4 animate-fadeIn">
-              <form onSubmit={confirmQueueSubmission} className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-[440px] w-full overflow-hidden" id="queue-conf-modal">
+              <form onSubmit={(e) => { e.preventDefault(); confirmQueueSubmission(e); }} className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-[440px] w-full overflow-hidden" id="queue-conf-modal">
                 <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
                   <div>
                     <span className="text-[9px] font-mono font-bold text-slate-400 uppercase">CARTA LABORAL DE TRABAJO</span>
@@ -1597,11 +1621,12 @@ export default function ModuleIngenieria({
                       onChange={(e) => setQueueAssignedTo(e.target.value)}
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 font-bold text-slate-800"
                     >
-                      <option value="Jorge Salmero">Jorge Salmero (Mesa y Carpintería)</option>
-                      <option value="Martín Gómez">Martín Gómez (Estructura y Soldadura)</option>
-                      <option value="Roberto Sosa">Roberto Sosa (Pintura y Acabados)</option>
-                      <option value="Álvaro Ramos">Álvaro Ramos (Ensamble y Calidad)</option>
-                      <option value="Oficina Central">Oficina Central (Oficina)</option>
+                                            {users.filter(u => u.role === 'Operador').map(u => (
+                        <option key={u.id} value={u.username}>{u.username} (Operador)</option>
+                      ))}
+                      {users.filter(u => u.role === 'Operador').length === 0 && (
+                        <option value="Sin Operadores" disabled>No hay operadores registrados</option>
+                      )}
                     </select>
                   </div>
                 </div>
@@ -1615,7 +1640,8 @@ export default function ModuleIngenieria({
                     Cancelar
                   </button>
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={confirmQueueSubmission}
                     className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow cursor-pointer shadow-emerald-500/15"
                   >
                     Confirmar Envío
@@ -1677,7 +1703,7 @@ export default function ModuleIngenieria({
           {/* SIMPLIFIED DIRECT QUEUE FORM (Only requires Name, Difficulty, Description, Client and Quantity) */}
           {showDirectQueueForm && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[110] p-4 animate-fadeIn">
-              <form onSubmit={handleDirectQueueSubmit} className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-[500px] w-full overflow-hidden">
+              <form onSubmit={(e) => { e.preventDefault(); handleDirectQueueSubmit(e); }} className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-[500px] w-full overflow-hidden">
                 
                 <div className="p-5 bg-blue-600 text-white flex justify-between items-center">
                   <div className="flex items-center gap-2.5">
@@ -1772,11 +1798,12 @@ export default function ModuleIngenieria({
                       onChange={(e) => setDqAssignedTo(e.target.value)}
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 font-bold text-slate-800"
                     >
-                      <option value="Jorge Salmero">Jorge Salmero (Mesa y Carpintería)</option>
-                      <option value="Martín Gómez">Martín Gómez (Estructura y Soldadura)</option>
-                      <option value="Roberto Sosa">Roberto Sosa (Pintura y Acabados)</option>
-                      <option value="Álvaro Ramos">Álvaro Ramos (Ensamble y Calidad)</option>
-                      <option value="Oficina Central">Oficina Central (Oficina)</option>
+                                            {users.filter(u => u.role === 'Operador').map(u => (
+                        <option key={u.id} value={u.username}>{u.username} (Operador)</option>
+                      ))}
+                      {users.filter(u => u.role === 'Operador').length === 0 && (
+                        <option value="Sin Operadores" disabled>No hay operadores registrados</option>
+                      )}
                     </select>
                   </div>
                 </div>

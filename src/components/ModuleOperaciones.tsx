@@ -10,7 +10,7 @@ import {
   CheckCircle2, Play, Pause, ChevronRight, Minimize2, FileText, Sliders,
   Trash2, Search, Coffee, LogIn, LogOut, RefreshCw, Timer, BookOpen, Info, CheckCircle
 } from 'lucide-react';
-import { ProductionTask, ProductionStatus, TaskInstructionStep, FinancialTransaction } from '../types';
+import { ProductionTask, ProductionStatus, TaskInstructionStep, FinancialTransaction, AppUser } from '../types';
 
 interface ModuleOperacionesProps {
   productionTasks: ProductionTask[];
@@ -20,6 +20,7 @@ interface ModuleOperacionesProps {
   activeUsername?: string;
   onPublishAlert: (type: 'urgent' | 'info' | 'success', title: string, desc: string) => void;
   onAddTransaction?: (transaction: FinancialTransaction) => void;
+  users?: AppUser[];
 }
 
 interface CheckRecord {
@@ -31,6 +32,15 @@ interface CheckRecord {
   timestamp: number;
 }
 
+
+// Safe local storage helper
+const safeGetItem = (key: string) => {
+  try { return safeGetItem(key); } catch (e) { return null; }
+};
+const safeSetItem = (key: string, value: string) => {
+  try { safeSetItem(key, value); } catch (e) { console.warn('LocalStorage disabled'); }
+};
+
 export default function ModuleOperaciones({
   productionTasks,
   onUpdateTaskStatus,
@@ -38,7 +48,8 @@ export default function ModuleOperaciones({
   userRole,
   onPublishAlert,
   onAddTransaction,
-  activeUsername = 'Operador'
+  activeUsername = 'Operador',
+  users = []
 }: ModuleOperacionesProps) {
   const columns: { id: ProductionStatus; label: string; color: string }[] = [
     { id: 'Pendiente', label: '1. En Espera', color: 'border-t-slate-400 bg-slate-50' },
@@ -49,7 +60,6 @@ export default function ModuleOperaciones({
     { id: 'Terminado', label: '6. Finalizado', color: 'border-t-emerald-500 bg-emerald-50/10' }
   ];
 
-  const artisans = ['Carlos Ruiz', 'Martín Gómez', 'Roberto Sosa', 'Álvaro Ramos', 'Oficina Central'];
 
   // Global UI Tabs
   const [activeAdminTab, setActiveAdminTab] = useState<'checador' | 'observaciones_muebles'>('checador');
@@ -64,7 +74,7 @@ export default function ModuleOperaciones({
 
   // Time Clock records (Checador) loaded from LocalStorage
   const [checkRecords, setCheckRecords] = useState<CheckRecord[]>(() => {
-    const saved = localStorage.getItem('taller_checador_records');
+    const saved = safeGetItem('taller_checador_records');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -103,7 +113,7 @@ export default function ModuleOperaciones({
 
   // Save check records to LocalStorage
   useEffect(() => {
-    localStorage.setItem('taller_checador_records', JSON.stringify(checkRecords));
+    safeSetItem('taller_checador_records', JSON.stringify(checkRecords));
   }, [checkRecords]);
 
   // Selected Task and Modal state
@@ -417,7 +427,8 @@ export default function ModuleOperaciones({
   // Helper: Add custom seed records manually (for demo/convenience)
   const handleAddDemoRecord = () => {
     const types: ('Entrada' | 'Salida Comer' | 'Entrada Comer' | 'Salida')[] = ['Entrada', 'Salida Comer', 'Entrada Comer', 'Salida'];
-    const randomArtisan = artisans[Math.floor(Math.random() * 4)];
+    const operatorUsers = users.filter(u => u.role === 'Operador');
+    const randomArtisan = operatorUsers.length > 0 ? operatorUsers[Math.floor(Math.random() * operatorUsers.length)].username : 'Oficina Central';
     const randomType = types[Math.floor(Math.random() * 4)];
     
     const now = new Date();
@@ -1640,13 +1651,16 @@ export default function ModuleOperaciones({
                   <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Buscar por Artesano</label>
                   <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Ej. Carlos Ruiz"
+                    <select
                       value={adminSearchArtisan}
                       onChange={(e) => setAdminSearchArtisan(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs outline-none focus:border-blue-500 font-semibold"
-                    />
+                      className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs outline-none focus:border-blue-500 font-semibold appearance-none cursor-pointer"
+                    >
+                      <option value="">Todos los operadores</option>
+                      {users.filter(u => u.role === 'Operador').map(u => (
+                        <option key={u.id} value={u.username}>{u.username}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -2018,9 +2032,12 @@ export default function ModuleOperaciones({
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none"
                     required
                   >
-                    {artisans.map(art => (
-                      <option key={art} value={art}>{art}</option>
+                    {users.filter(u => u.role === 'Operador').map(u => (
+                      <option key={u.id} value={u.username}>{u.username}</option>
                     ))}
+                    {users.filter(u => u.role === 'Operador').length === 0 && (
+                      <option value="Sin Operadores" disabled>No hay operadores</option>
+                    )}
                   </select>
                 </div>
 
