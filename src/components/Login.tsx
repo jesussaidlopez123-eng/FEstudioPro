@@ -4,7 +4,7 @@ import { Shield, Eye, EyeOff, KeyRound, AlertCircle } from 'lucide-react';
 import { UserRole, AppUser } from '../types';
 
 interface LoginProps {
-  onLogin: (role: UserRole) => void;
+  onLogin: (role: UserRole, username: string) => void;
   users?: AppUser[];
 }
 
@@ -34,7 +34,7 @@ export default function Login({ onLogin, users = [] }: LoginProps) {
         return;
       }
 
-      onLogin(user.role);
+      onLogin(user.role, user.username);
       setLoading(false);
     }, 600);
   };

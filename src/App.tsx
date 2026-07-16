@@ -45,6 +45,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     return localStorage.getItem('f_estudio_is_logged_in') === 'true';
   });
+  const [activeUsername, setActiveUsername] = useState<string>('');
   const [userRole, setUserRole] = useState<UserRole>(() => {
     return (localStorage.getItem('f_estudio_user_role') as UserRole) || 'Admin';
   });
@@ -157,7 +158,8 @@ useEffect(() => {
   }, [okrs]);
 
   // Handle Login / Logout Actions
-  const handleLogin = (role: UserRole) => {
+  const handleLogin = (role: UserRole, username: string) => {
+    setActiveUsername(username);
     setUserRole(role);
     setIsLoggedIn(true);
     // Operators are immediately focused on Module 3 (Production) as it represents their main workspace
@@ -261,7 +263,7 @@ useEffect(() => {
         productName: quantity > 1 ? `${ficha.name} (Pieza ${i} de ${quantity})` : ficha.name,
         clientName: clientName.trim() || 'Público General',
         status: 'Pendiente',
-        assignedTo: assignedTo || 'Carlos Ruiz',
+        assignedTo: assignedTo || 'Jorge Salmero',
         notes: 'Envío manual desde Diseño e Ingeniería.',
         updatedAt: new Date().toISOString().split('T')[0],
         progress: 0,
@@ -278,7 +280,7 @@ useEffect(() => {
     handleAddAlert(
       'success',
       'Diseño en Fila de Taller',
-      `Se agregó "${ficha.name}" x${quantity} asignado a ${assignedTo || 'Carlos Ruiz'} con ${initialSteps.length} instrucciones de trabajo.`
+      `Se agregó "${ficha.name}" x${quantity} asignado a ${assignedTo || 'Jorge Salmero'} con ${initialSteps.length} instrucciones de trabajo.`
     );
   };
 
@@ -465,7 +467,7 @@ useEffect(() => {
   const unreadAlertsCount = alerts.filter(a => !a.acknowledged).length;
 
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} users={users} />;
+    return <Login onLogin={handleLogin as any} users={users} />;
   }
 
   // Header Title mapping based on active module view
@@ -484,7 +486,7 @@ useEffect(() => {
       <Sidebar 
         activeModule={activeModule} 
         onModuleChange={setActiveModule} 
-        userRole={userRole} 
+        userRole={userRole}
         onLogout={handleLogout} 
       />
 
@@ -563,6 +565,7 @@ useEffect(() => {
               onUpdateTaskStatus={handleUpdateTaskStatus}
               onUpdateTaskProgress={handleUpdateTaskProgress}
               userRole={userRole}
+              activeUsername={activeUsername}
               onPublishAlert={handleAddAlert}
               onAddTransaction={handleAddTransaction}
             />

@@ -542,7 +542,7 @@ export default function ModuleDireccion({
             {orderedMonths.map((m, idx) => {
               const totalItems = orderedMonths.length;
               // Distribute evenly along the line
-              const xCoord = 50 + (idx * (520 / (totalItems - 1)));
+              const xCoord = 50 + (idx * (520 / Math.max(1, totalItems - 1)));
               const data = monthlyAggregates[m];
 
               // Y scale mapping helper
@@ -575,7 +575,7 @@ export default function ModuleDireccion({
             {(activeChartView === 'all' || activeChartView === 'gross') && (
               <path
                 d={orderedMonths.map((m, idx) => {
-                  const x = 50 + (idx * (520 / (orderedMonths.length - 1)));
+                  const x = 50 + (idx * (520 / Math.max(1, orderedMonths.length - 1)));
                   const y = 200 - ((monthlyAggregates[m].gross / chartMaxVal) * 180);
                   return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
                 }).join(' ')}
@@ -591,7 +591,7 @@ export default function ModuleDireccion({
             {(activeChartView === 'all' || activeChartView === 'expenses') && (
               <path
                 d={orderedMonths.map((m, idx) => {
-                  const x = 50 + (idx * (520 / (orderedMonths.length - 1)));
+                  const x = 50 + (idx * (520 / Math.max(1, orderedMonths.length - 1)));
                   const y = 200 - ((monthlyAggregates[m].expenses / chartMaxVal) * 180);
                   return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
                 }).join(' ')}
@@ -608,7 +608,7 @@ export default function ModuleDireccion({
             {(activeChartView === 'all' || activeChartView === 'net') && (
               <path
                 d={orderedMonths.map((m, idx) => {
-                  const x = 50 + (idx * (520 / (orderedMonths.length - 1)));
+                  const x = 50 + (idx * (520 / Math.max(1, orderedMonths.length - 1)));
                   const y = 200 - ((monthlyAggregates[m].net / chartMaxVal) * 180);
                   return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
                 }).join(' ')}

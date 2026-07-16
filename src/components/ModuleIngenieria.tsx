@@ -40,7 +40,7 @@ export default function ModuleIngenieria({
   const [queueingFicha, setQueueingFicha] = useState<FichaTecnica | null>(null);
   const [queueClientName, setQueueClientName] = useState('Público General');
   const [queueQuantity, setQueueQuantity] = useState(1);
-  const [queueAssignedTo, setQueueAssignedTo] = useState('Carlos Ruiz');
+  const [queueAssignedTo, setQueueAssignedTo] = useState('Jorge Salmero');
 
   // PDF Extraction Loading States
   const [isExtracting, setIsExtracting] = useState(false);
@@ -55,7 +55,7 @@ export default function ModuleIngenieria({
   const [dqInstrucciones, setDqInstrucciones] = useState('');
   const [dqClientName, setDqClientName] = useState('Público General');
   const [dqQuantity, setDqQuantity] = useState(1);
-  const [dqAssignedTo, setDqAssignedTo] = useState('Carlos Ruiz');
+  const [dqAssignedTo, setDqAssignedTo] = useState('Jorge Salmero');
   const [dqPdfName, setDqPdfName] = useState('plano_diseno.pdf');
   const [dqPdfSize, setDqPdfSize] = useState('1.8 MB');
 
@@ -1597,7 +1597,7 @@ export default function ModuleIngenieria({
                       onChange={(e) => setQueueAssignedTo(e.target.value)}
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 font-bold text-slate-800"
                     >
-                      <option value="Carlos Ruiz">Carlos Ruiz (Mesa y Carpintería)</option>
+                      <option value="Jorge Salmero">Jorge Salmero (Mesa y Carpintería)</option>
                       <option value="Martín Gómez">Martín Gómez (Estructura y Soldadura)</option>
                       <option value="Roberto Sosa">Roberto Sosa (Pintura y Acabados)</option>
                       <option value="Álvaro Ramos">Álvaro Ramos (Ensamble y Calidad)</option>
@@ -1772,7 +1772,7 @@ export default function ModuleIngenieria({
                       onChange={(e) => setDqAssignedTo(e.target.value)}
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 font-bold text-slate-800"
                     >
-                      <option value="Carlos Ruiz">Carlos Ruiz (Mesa y Carpintería)</option>
+                      <option value="Jorge Salmero">Jorge Salmero (Mesa y Carpintería)</option>
                       <option value="Martín Gómez">Martín Gómez (Estructura y Soldadura)</option>
                       <option value="Roberto Sosa">Roberto Sosa (Pintura y Acabados)</option>
                       <option value="Álvaro Ramos">Álvaro Ramos (Ensamble y Calidad)</option>

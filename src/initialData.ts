@@ -2,7 +2,7 @@ import { FichaTecnica, SalesOrder, ProductionTask, FinancialTransaction, SystemA
 
 export const initialUsers: AppUser[] = [
   { id: 'usr-1', username: 'admin', role: 'Admin', passwordHash: 'admin123' },
-  { id: 'usr-2', username: 'operador1', role: 'Operador', passwordHash: '1234' }
+  { id: 'usr-2', username: 'Jorge Salmero', role: 'Operador', passwordHash: '1234' }
 ];
 
 export const initialFichasTecnicas: FichaTecnica[] = [];

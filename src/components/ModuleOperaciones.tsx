@@ -17,6 +17,7 @@ interface ModuleOperacionesProps {
   onUpdateTaskStatus: (id: string, newStatus: ProductionStatus) => void;
   onUpdateTaskProgress: (id: string, progress: number, notes: string, assignedTo: string, instruccionesTrabajo?: TaskInstructionStep[]) => void;
   userRole: 'Admin' | 'Operador';
+  activeUsername?: string;
   onPublishAlert: (type: 'urgent' | 'info' | 'success', title: string, desc: string) => void;
   onAddTransaction?: (transaction: FinancialTransaction) => void;
 }
@@ -36,7 +37,8 @@ export default function ModuleOperaciones({
   onUpdateTaskProgress,
   userRole,
   onPublishAlert,
-  onAddTransaction
+  onAddTransaction,
+  activeUsername = 'Operador'
 }: ModuleOperacionesProps) {
   const columns: { id: ProductionStatus; label: string; color: string }[] = [
     { id: 'Pendiente', label: '1. En Espera', color: 'border-t-slate-400 bg-slate-50' },
@@ -135,8 +137,7 @@ export default function ModuleOperaciones({
   }, [selectedSessionTaskId]);
 
   // Operator Workshop Quick Alert State
-  const [operatorSelectedArtisan, setOperatorSelectedArtisan] = useState<string>('Carlos Ruiz');
-  const [operatorAlertTitle, setOperatorAlertTitle] = useState('');
+    const [operatorAlertTitle, setOperatorAlertTitle] = useState('');
   const [operatorAlertDesc, setOperatorAlertDesc] = useState('');
   
   // Expenses state
@@ -153,7 +154,7 @@ export default function ModuleOperaciones({
 
   // Auto initialize selectedSessionTaskId to the first assigned piece of the operator (non-Terminado)
   useEffect(() => {
-    const operatorTasks = productionTasks.filter(t => t.assignedTo === operatorSelectedArtisan && t.status !== 'Terminado');
+    const operatorTasks = productionTasks.filter(t => t.assignedTo === activeUsername && t.status !== 'Terminado');
     if (operatorTasks.length > 0) {
       if (!selectedSessionTaskId || !operatorTasks.some(t => t.id === selectedSessionTaskId && t.status !== 'Terminado')) {
         setSelectedSessionTaskId(operatorTasks[0].id);
@@ -161,7 +162,7 @@ export default function ModuleOperaciones({
     } else {
       setSelectedSessionTaskId(null);
     }
-  }, [operatorSelectedArtisan, productionTasks]);
+  }, [activeUsername, productionTasks]);
 
   // Step Stopwatch Live Tick Effect
   useEffect(() => {
@@ -354,7 +355,7 @@ export default function ModuleOperaciones({
     );
 
     // Auto-select next active task in line if any
-    const activeTasks = productionTasks.filter(t => t.assignedTo === operatorSelectedArtisan && t.id !== taskId && t.status !== 'Terminado');
+    const activeTasks = productionTasks.filter(t => t.assignedTo === activeUsername && t.id !== taskId && t.status !== 'Terminado');
     if (activeTasks.length > 0) {
       setSelectedSessionTaskId(activeTasks[0].id);
     } else {
@@ -378,7 +379,7 @@ export default function ModuleOperaciones({
     
     // Check if they already clocked this today
     const exists = checkRecords.some(
-      r => r.artisan === operatorSelectedArtisan && r.date === todayStr && r.type === type
+      r => r.artisan === activeUsername && r.date === todayStr && r.type === type
     );
     if (exists) {
       alert(`Ya has registrado tu "${type}" para el día de hoy.`);
@@ -388,7 +389,7 @@ export default function ModuleOperaciones({
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     const newRecord: CheckRecord = {
       id: `check-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      artisan: operatorSelectedArtisan,
+      artisan: activeUsername,
       date: todayStr,
       type: type,
       time: timeStr,
@@ -401,7 +402,7 @@ export default function ModuleOperaciones({
     // Publish notice to alerts system
     onPublishAlert(
       'info',
-      `Checador: ${operatorSelectedArtisan}`,
+      `Checador: ${activeUsername}`,
       `Registró su ${type} de hoy a las ${timeStr}`
     );
   };
@@ -651,7 +652,7 @@ export default function ModuleOperaciones({
 
     onPublishAlert(
       'urgent',
-      `Taller (${operatorSelectedArtisan}): ${operatorAlertTitle.trim()}`,
+      `Taller (${activeUsername}): ${operatorAlertTitle.trim()}`,
       operatorAlertDesc.trim()
     );
 
@@ -662,7 +663,7 @@ export default function ModuleOperaciones({
 
   // Filter tasks for active Operator
   const filteredTasksForOperator = productionTasks.filter(
-    task => task.assignedTo === operatorSelectedArtisan
+    task => task.assignedTo === activeUsername
   );
 
   // Filter attendance logs for Admin view
@@ -713,7 +714,7 @@ export default function ModuleOperaciones({
 
   const todayStr = getTodayString();
   const todayRecordsForActiveArtisan = checkRecords.filter(
-    r => r.artisan === operatorSelectedArtisan && r.date === todayStr
+    r => r.artisan === activeUsername && r.date === todayStr
   );
 
   const getCheckTime = (type: 'Entrada' | 'Salida Comer' | 'Entrada Comer' | 'Salida') => {
@@ -736,20 +737,7 @@ export default function ModuleOperaciones({
           </p>
         </div>
 
-        {/* Quick artisan profile filter switcher */}
-        <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl p-2.5 shadow-sm">
-          <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Operador Activo:</span>
-          <select
-            value={operatorSelectedArtisan}
-            onChange={(e) => setOperatorSelectedArtisan(e.target.value)}
-            className="text-xs font-bold text-blue-600 bg-white border border-slate-200 rounded-lg px-3 py-1.5 outline-none cursor-pointer shadow-xs focus:ring-1 focus:ring-blue-500/25"
-            id="artisan-filter-select"
-          >
-            {artisans.map(art => (
-              <option key={art} value={art}>{art} {art === 'Oficina Central' ? '(Oficina)' : '(Estación)'}</option>
-            ))}
-          </select>
-        </div>
+        
       </div>
 
       {/* ROLE CONTROLS & NAVIGATION TABS */}
@@ -828,7 +816,7 @@ export default function ModuleOperaciones({
                   <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest block font-mono">Consola de Asistencia</span>
                   <h3 className="text-base font-extrabold text-slate-100 flex items-center gap-2 mt-1">
                     <Users size={18} className="text-amber-400" />
-                    <span>Registro Diario de Entrada y Salida: {operatorSelectedArtisan}</span>
+                    <span>Registro Diario de Entrada y Salida: {activeUsername}</span>
                   </h3>
                 </div>
 
@@ -984,7 +972,7 @@ export default function ModuleOperaciones({
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <CheckSquare size={18} className="text-blue-400" />
-                    <span>Registro de Tiempos y Taller: {operatorSelectedArtisan}</span>
+                    <span>Registro de Tiempos y Taller: {activeUsername}</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
                     Monitorea operaciones en tiempo real. Selecciona una estructura para iniciar cronómetros e instructivos técnicos.
@@ -1438,7 +1426,7 @@ export default function ModuleOperaciones({
                             </h4>
                           </div>
                           <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-extrabold">
-                            Estación: {operatorSelectedArtisan}
+                            Estación: {activeUsername}
                           </span>
                         </div>
 
