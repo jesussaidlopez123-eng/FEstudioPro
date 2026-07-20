@@ -206,7 +206,7 @@ export default function ModuleIngenieria({
         const file = filesArray[i] as File;
         if (file.type.startsWith('image/')) {
           try {
-            if (!storage) {
+            if (storage?.type === 'storage' || !storage) {
                console.warn("Storage not initialized, fallback to dummy image");
                setReferenceImages(prev => [...prev, "https://via.placeholder.com/150"]);
                setReferenceImageNames(prev => [...prev, file.name]);
@@ -220,9 +220,9 @@ export default function ModuleIngenieria({
             setReferenceImages(prev => [...prev, downloadUrl]);
             const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
             setReferenceImageNames(prev => [...prev, cleanName]);
-          } catch (e) {
+          } catch (e: any) {
             console.error('Image upload failed', e);
-            alert('Error al subir la imagen');
+            alert(`Error al subir la imagen: ${e?.message || 'Revisa tu conexión o configuración de Firebase Storage.'}`);
           }
         }
       }
