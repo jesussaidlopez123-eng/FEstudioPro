@@ -39,6 +39,8 @@ import ModuleAdministracion from './components/ModuleAdministracion';
 import ModuleMarketing from './components/ModuleMarketing';
 import ModuleConfiguracion from './components/ModuleConfiguracion';
 import { syncToGoogleSheets } from './lib/googleSheets';
+import { db } from './lib/firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 
 // Safe local storage helper
@@ -59,6 +61,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [activeUsername, setActiveUsername] = useState<string>('');
   const [userRole, setUserRole] = useState<UserRole>('Admin');
+  const isSyncingRef = React.useRef(false);
 
   // ERP Core Databases States (Lazy loaded from localStorage with default initial fallback)
   const [fichasTecnicas, setFichasTecnicas] = useState<FichaTecnica[]>(initialFichasTecnicas);
@@ -72,67 +75,84 @@ export default function App() {
   const [alerts, setAlerts] = useState<SystemAlert[]>(initialSystemAlerts);
 
   
-  const [users, setUsers] = useState<AppUser[]>(() => {
-    const data = safeGetItem('f_estudio_db_v2_users');
-    let parsedUsers = data ? JSON.parse(data) : initialUsers;
-    
-    // Auto-migrate "operador1" to "Jorge Salmero" in user's browser localStorage
-    parsedUsers = parsedUsers.map(u => 
-      u.username === 'operador1' ? { ...u, username: 'Jorge Salmero' } : u
-    );
-    
-    // Ensure initial users exist (admin and Jorge Salmero)
-    initialUsers.forEach(initU => {
-      if (!parsedUsers.find(u => u.id === initU.id || u.username === initU.username)) {
-        parsedUsers.push(initU);
-      }
-    });
-
-    return parsedUsers;
-  });
+  const [users, setUsers] = useState<AppUser[]>(initialUsers);
 const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
 
   // Navigation & Drawer UI states
   const [activeModule, setActiveModule] = useState<string>('direccion');
   const [isAlertsOpen, setIsAlertsOpen] = useState<boolean>(false);
 
-  // Synchronize States to LocalStorage
-  useEffect(() => {
-    try {
-      safeSetItem('f_estudio_is_logged_in', isLoggedIn.toString());
-      safeSetItem('f_estudio_user_role', userRole);
-      safeSetItem('f_estudio_active_username', activeUsername);
-    } catch (e) {
-      console.error('Failed to save auth state to localStorage', e);
-    }
-  }, [isLoggedIn, userRole, activeUsername]);
 
   useEffect(() => {
-    try {
-      safeSetItem('f_estudio_db_v2_fichas', JSON.stringify(fichasTecnicas));
-    } catch (e) {
-      console.error('Failed to save fichas to localStorage. Might be exceeding quota.', e);
-      alert('Error: No se pudo guardar en el almacenamiento local. Posible límite de memoria alcanzado por imágenes muy grandes.');
+    // Session load
+    const sess = localStorage.getItem('erp_session');
+    if (sess) {
+      const parsed = JSON.parse(sess);
+      setIsLoggedIn(true);
+      setActiveUsername(parsed.username);
+      setUserRole(parsed.role);
     }
-  }, [fichasTecnicas]);
 
-  
+    if (!db.app) {
+      setIsAppLoaded(true);
+      return () => {};
+    }
+    const unsub = onSnapshot(doc(db, 'erp', 'core_state'), (docSnap) => {
+      if (docSnap.exists()) {
+        isSyncingRef.current = true;
+        const data = docSnap.data();
+        if (data.fichas) setFichasTecnicas(data.fichas);
+        if (data.orders) setOrders(data.orders);
+        if (data.tasks) setProductionTasks(data.tasks);
+        if (data.transactions) setTransactions(data.transactions);
+        if (data.alerts) setAlerts(data.alerts);
+        if (data.users) setUsers(data.users);
+        if (data.okrs) setOkrs(data.okrs);
+        
+        setTimeout(() => {
+          isSyncingRef.current = false;
+        }, 500);
+      }
+      setIsAppLoaded(true);
+    }, (error) => {
+      console.error("Firebase sync error:", error);
+      setIsAppLoaded(true);
+    });
 
-  
+    return () => unsub();
+  }, []);
 
-  
-
-  
-
-  
-  
-
+  // Sync back to Firebase on changes
+  useEffect(() => {
+    if (!isAppLoaded || isSyncingRef.current || !db.app) return;
+    const syncData = async () => {
+      try {
+        await setDoc(doc(db, 'erp', 'core_state'), {
+          fichas: fichasTecnicas,
+          orders,
+          tasks: productionTasks,
+          transactions,
+          alerts,
+          users,
+          okrs,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.error("Error saving to Firebase", err);
+      }
+    };
+    
+    // Debounce saves
+    const timeout = setTimeout(syncData, 1000);
+    return () => clearTimeout(timeout);
+  }, [fichasTecnicas, orders, productionTasks, transactions, alerts, users, okrs, isAppLoaded]);
 
   // Handle Login / Logout Actions
   const handleLogin = (role: UserRole, username: string) => {
     setActiveUsername(username);
     setUserRole(role);
     setIsLoggedIn(true);
+    localStorage.setItem('erp_session', JSON.stringify({ role, username }));
     // Operators are immediately focused on Module 3 (Production) as it represents their main workspace
     if (role === 'Operador') {
       setActiveModule('operaciones');
@@ -143,8 +163,7 @@ const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    safeRemoveItem('f_estudio_is_logged_in');
-    safeRemoveItem('f_estudio_user_role');
+    localStorage.removeItem('erp_session');
   };
 
   // State Manipulators (Callbacks)
