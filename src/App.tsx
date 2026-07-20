@@ -449,6 +449,17 @@ const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
     handleAddAlert('info', 'Usuario Actualizado', 'Se han actualizado los datos del usuario.');
   };
 
+  const handleResetSystem = async () => {
+    setFichasTecnicas(initialFichasTecnicas);
+    setOrders(initialSalesOrders);
+    setProductionTasks(initialProductionTasks);
+    setTransactions(initialFinancialTransactions);
+    setAlerts(initialSystemAlerts);
+    setOkrs(initialOKRs);
+    setUsers(initialUsers);
+    handleAddAlert('success', 'Sistema Restaurado', 'Se han restaurado los datos de fábrica del ERP.');
+  };
+
   const handleDeleteUser = (id: string) => {
     setUsers(prev => prev.filter(u => u.id !== id));
     handleAddAlert('info', 'Usuario Eliminado', 'Se ha eliminado el usuario del sistema.');
@@ -582,6 +593,7 @@ const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
               onAddUser={handleAddUser}
               onUpdateUser={handleUpdateUser}
               onDeleteUser={handleDeleteUser}
+              onResetSystem={handleResetSystem}
             />
           )}
         </main>

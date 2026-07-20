@@ -7,9 +7,10 @@ interface ModuleConfiguracionProps {
   onAddUser: (user: Omit<AppUser, 'id'>) => void;
   onUpdateUser: (id: string, updates: Partial<AppUser>) => void;
   onDeleteUser: (id: string) => void;
+  onResetSystem: () => void;
 }
 
-export default function ModuleConfiguracion({ users, onAddUser, onUpdateUser, onDeleteUser }: ModuleConfiguracionProps) {
+export default function ModuleConfiguracion({ users, onAddUser, onUpdateUser, onDeleteUser, onResetSystem }: ModuleConfiguracionProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [username, setUsername] = useState('');
@@ -54,12 +55,24 @@ export default function ModuleConfiguracion({ users, onAddUser, onUpdateUser, on
           </h2>
           <p className="text-sm text-slate-500 mt-1">Gestión de usuarios y accesos</p>
         </div>
-        <button
-          onClick={() => handleOpenForm()}
-          className="text-sm font-bold bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm shadow-blue-500/20 transition-all cursor-pointer"
-        >
-          <UserPlus size={16} /> Nuevo Usuario
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              if(window.confirm('ADVERTENCIA: Esta acción eliminará permanentemente todos los datos de fichas técnicas, pedidos, tareas, alertas y configuraciones, dejándolo en su estado de fábrica inicial. Se preservarán los usuarios actuales. ¿Estás seguro que deseas continuar?')) {
+                onResetSystem();
+              }
+            }}
+            className="text-sm font-bold bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg flex items-center gap-2 border border-red-200 transition-all cursor-pointer"
+          >
+            <Trash2 size={16} /> Restaurar de Fábrica
+          </button>
+          <button
+            onClick={() => handleOpenForm()}
+            className="text-sm font-bold bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm shadow-blue-500/20 transition-all cursor-pointer"
+          >
+            <UserPlus size={16} /> Nuevo Usuario
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
