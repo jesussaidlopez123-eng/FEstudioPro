@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,8 +12,9 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-let app;
+let app: any;
 let db: any = null;
+let storage: any = null;
 
 if (firebaseConfig.apiKey && firebaseConfig.projectId) {
   if (!getApps().length) {
@@ -21,6 +23,7 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     app = getApps()[0];
   }
   db = getFirestore(app);
+  storage = getStorage(app);
 } else {
   console.warn("⚠️ Faltan las variables de entorno de Firebase. La base de datos no funcionará hasta que se configuren.");
   // Provide a dummy db object that won't crash when passed to doc/getDoc/setDoc
@@ -28,6 +31,10 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     type: 'firestore',
     toJSON: () => ({})
   };
+  storage = {
+    type: 'storage',
+  };
 }
 
-export { db };
+export { db, storage };
+

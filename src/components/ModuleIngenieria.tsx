@@ -12,6 +12,8 @@ import {
   Paperclip
 } from 'lucide-react';
 import { FichaTecnica, AppUser } from '../types';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../lib/firebase';
 
 interface ModuleIngenieriaProps {
   fichasTecnicas: FichaTecnica[];
@@ -203,19 +205,21 @@ export default function ModuleIngenieria({
       for (let i = 0; i < filesArray.length; i++) {
         const file = filesArray[i] as File;
         if (file.type.startsWith('image/')) {
-          const formData = new FormData();
-          formData.append('image', file);
           try {
-            const res = await fetch('/api/upload', {
-              method: 'POST',
-              body: formData
-            });
-            if (res.ok) {
-              const data = await res.json();
-              setReferenceImages(prev => [...prev, data.url]);
-              const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-              setReferenceImageNames(prev => [...prev, cleanName]);
+            if (!storage) {
+               console.warn("Storage not initialized, fallback to dummy image");
+               setReferenceImages(prev => [...prev, "https://via.placeholder.com/150"]);
+               setReferenceImageNames(prev => [...prev, file.name]);
+               continue;
             }
+            
+            const fileRef = ref(storage, `engineering_images/${Date.now()}-${file.name}`);
+            await uploadBytes(fileRef, file);
+            const downloadUrl = await getDownloadURL(fileRef);
+            
+            setReferenceImages(prev => [...prev, downloadUrl]);
+            const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            setReferenceImageNames(prev => [...prev, cleanName]);
           } catch (e) {
             console.error('Image upload failed', e);
             alert('Error al subir la imagen');
