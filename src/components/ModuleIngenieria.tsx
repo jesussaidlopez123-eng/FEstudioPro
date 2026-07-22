@@ -12,6 +12,7 @@ import {
   Paperclip
 } from 'lucide-react';
 import { FichaTecnica, AppUser } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface ModuleIngenieriaProps {
   fichasTecnicas: FichaTecnica[];
@@ -204,21 +205,26 @@ export default function ModuleIngenieria({
       for (let i = 0; i < filesArray.length; i++) {
         const file = filesArray[i] as File;
         if (file.type.startsWith('image/')) {
-          const formData = new FormData();
-          formData.append('image', file);
           try {
-            const res = await fetch('/api/upload', {
-              method: 'POST',
-              body: formData
-            });
-            if (res.ok) {
-              const data = await res.json();
-              setReferenceImages(prev => [...prev, data.url]);
-              const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-              setReferenceImageNames(prev => [...prev, cleanName]);
-            } else {
-               throw new Error('Server returned ' + res.status);
-            }
+            if (!supabase) throw new Error("Supabase no configurado");
+            
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `engineering/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('uploads')
+              .upload(filePath, file);
+              
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('uploads')
+              .getPublicUrl(filePath);
+
+            setReferenceImages(prev => [...prev, publicUrl]);
+            const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            setReferenceImageNames(prev => [...prev, cleanName]);
           } catch (e: any) {
             console.error('Image upload failed', e);
             alert(`Error al subir la imagen: ${e?.message || 'Error de conexión.'}`);
@@ -245,21 +251,26 @@ export default function ModuleIngenieria({
       for (let i = 0; i < filesArray.length; i++) {
         const file = filesArray[i] as File;
         if (file.type.startsWith('image/')) {
-          const formData = new FormData();
-          formData.append('image', file);
           try {
-            const res = await fetch('/api/upload', {
-              method: 'POST',
-              body: formData
-            });
-            if (res.ok) {
-              const data = await res.json();
-              setReferenceImages(prev => [...prev, data.url]);
-              const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-              setReferenceImageNames(prev => [...prev, cleanName]);
-            } else {
-               throw new Error('Server returned ' + res.status);
-            }
+            if (!supabase) throw new Error("Supabase no configurado");
+            
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `engineering/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('uploads')
+              .upload(filePath, file);
+              
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('uploads')
+              .getPublicUrl(filePath);
+
+            setReferenceImages(prev => [...prev, publicUrl]);
+            const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            setReferenceImageNames(prev => [...prev, cleanName]);
           } catch (err: any) {
             console.error('Image upload failed', err);
             alert(`Error al subir la imagen: ${err?.message || 'Error de conexión.'}`);
