@@ -198,9 +198,12 @@ export default function ModuleIngenieria({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const [isUploading, setIsUploading] = useState(false);
+
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
+      setIsUploading(true);
       const filesArray = Array.from(files);
       for (let i = 0; i < filesArray.length; i++) {
         const file = filesArray[i] as File;
@@ -231,6 +234,11 @@ export default function ModuleIngenieria({
           }
         }
       }
+      setIsUploading(false);
+      // Reset input so same file can be uploaded again
+      if (imageInputRef.current) {
+        imageInputRef.current.value = '';
+      }
     }
   };
 
@@ -247,6 +255,7 @@ export default function ModuleIngenieria({
     e.preventDefault();
     const files = e.dataTransfer.files;
     if (files) {
+      setIsUploading(true);
       const filesArray = Array.from(files);
       for (let i = 0; i < filesArray.length; i++) {
         const file = filesArray[i] as File;
@@ -277,6 +286,7 @@ export default function ModuleIngenieria({
           }
         }
       }
+      setIsUploading(false);
     }
   };
 
@@ -1437,7 +1447,7 @@ export default function ModuleIngenieria({
                         <Paperclip size={18} className="text-slate-500" />
                       </button>
                       <span className="text-[11px] font-bold text-slate-500">
-                        {referenceImages.length > 0 ? `${referenceImages.length} fotos adjuntas (haz clic abajo para editar nombre)` : 'Adjuntar fotos de referencia'}
+                        {isUploading ? 'Subiendo imagen...' : (referenceImages.length > 0 ? `${referenceImages.length} fotos adjuntas (haz clic abajo para editar nombre)` : 'Adjuntar fotos de referencia')}
                       </span>
                     </div>
 
