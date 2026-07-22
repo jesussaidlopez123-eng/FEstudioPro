@@ -53,34 +53,23 @@ export default function Sidebar({ activeModule, onModuleChange, userRole, onLogo
 
       {/* Menu List */}
       <ul className="flex-grow py-6 space-y-1.5">
-        {menuItems.map((item) => {
+        {menuItems.filter(item => item.roles.includes(userRole)).map((item) => {
           const IconComponent = item.icon;
-          const hasAccess = item.roles.includes(userRole);
           const isActive = activeModule === item.id;
 
           return (
             <li key={item.id}>
               <button
-                onClick={() => hasAccess && onModuleChange(item.id)}
-                disabled={!hasAccess}
+                onClick={() => onModuleChange(item.id)}
                 className={`w-full px-6 py-4 flex items-center gap-4 text-sm font-medium transition-all duration-200 text-left border-l-4 relative group
                   ${isActive 
                     ? 'bg-[#111a2f] text-white border-blue-500 font-semibold' 
-                    : hasAccess 
-                      ? 'text-slate-400 border-transparent hover:bg-[#111a2f]/50 hover:text-white cursor-pointer' 
-                      : 'text-slate-600 border-transparent opacity-40 cursor-not-allowed'
+                    : 'text-slate-400 border-transparent hover:bg-[#111a2f]/50 hover:text-white cursor-pointer' 
                   }`}
                 id={`sidebar-item-${item.id}`}
               >
                 <IconComponent size={18} className={`${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
                 <span className="flex-grow">{item.label}</span>
-                
-                {/* Locked Indicator for Operators */}
-                {!hasAccess && (
-                  <span className="text-[9px] font-semibold bg-red-950/50 text-red-400 px-2 py-0.5 rounded-full border border-red-900/30">
-                    🔒 Bloqueado
-                  </span>
-                )}
               </button>
             </li>
           );

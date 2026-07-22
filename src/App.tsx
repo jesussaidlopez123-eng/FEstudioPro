@@ -92,6 +92,9 @@ const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
       setIsLoggedIn(true);
       setActiveUsername(parsed.username);
       setUserRole(parsed.role);
+      if (parsed.role === 'Operador') {
+        setActiveModule('operaciones');
+      }
     }
 
     if (!supabase) {
