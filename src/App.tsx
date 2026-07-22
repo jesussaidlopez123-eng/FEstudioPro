@@ -58,6 +58,7 @@ const safeRemoveItem = (key: string) => {
 export default function App() {
   // Authentication State
   const [isAppLoaded, setIsAppLoaded] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [activeUsername, setActiveUsername] = useState<string>('');
   const [userRole, setUserRole] = useState<UserRole>('Admin');
@@ -100,7 +101,8 @@ const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
 
     const loadData = async () => {
       const { data: row, error } = await supabase.from('core_state').select('data').eq('id', 'singleton').single();
-      if (!error && row && (row as any).data) {
+      if (error) setSyncError(error.message);
+      if (!error && row && (row as any).data) { setSyncError(null);
         isSyncingRef.current = true;
         const data = (row as any).data;
 
@@ -183,7 +185,7 @@ const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
         }));
         await supabase.from('core_state').upsert({ id: 'singleton', data: payload });
       } catch (err) {
-        console.error("Error saving to Supabase", err);
+        console.error("Error saving to Supabase", err); setSyncError(err instanceof Error ? err.message : String(err));
       }
     };
     
