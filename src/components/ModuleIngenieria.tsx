@@ -12,8 +12,6 @@ import {
   Paperclip
 } from 'lucide-react';
 import { FichaTecnica, AppUser } from '../types';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../lib/firebase';
 
 interface ModuleIngenieriaProps {
   fichasTecnicas: FichaTecnica[];
@@ -191,6 +189,7 @@ export default function ModuleIngenieria({
   // Simulated uploaded file
   const [uploadedFile, setUploadedFile] = useState<{name: string, size: string} | null>(null);
   const [isFormFileDragOver, setIsFormFileDragOver] = useState(false);
+  const [isImageDragOver, setIsImageDragOver] = useState(false);
 
   // Reference images for manual uploading
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
@@ -205,24 +204,24 @@ export default function ModuleIngenieria({
       for (let i = 0; i < filesArray.length; i++) {
         const file = filesArray[i] as File;
         if (file.type.startsWith('image/')) {
+          const formData = new FormData();
+          formData.append('image', file);
           try {
-            if (storage?.type === 'storage' || !storage) {
-               console.warn("Storage not initialized, fallback to dummy image");
-               setReferenceImages(prev => [...prev, "https://via.placeholder.com/150"]);
-               setReferenceImageNames(prev => [...prev, file.name]);
-               continue;
+            const res = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData
+            });
+            if (res.ok) {
+              const data = await res.json();
+              setReferenceImages(prev => [...prev, data.url]);
+              const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+              setReferenceImageNames(prev => [...prev, cleanName]);
+            } else {
+               throw new Error('Server returned ' + res.status);
             }
-            
-            const fileRef = ref(storage, `engineering_images/${Date.now()}-${file.name}`);
-            await uploadBytes(fileRef, file);
-            const downloadUrl = await getDownloadURL(fileRef);
-            
-            setReferenceImages(prev => [...prev, downloadUrl]);
-            const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-            setReferenceImageNames(prev => [...prev, cleanName]);
           } catch (e: any) {
             console.error('Image upload failed', e);
-            alert(`Error al subir la imagen: ${e?.message || 'Revisa tu conexión o configuración de Firebase Storage.'}`);
+            alert(`Error al subir la imagen: ${e?.message || 'Error de conexión.'}`);
           }
         }
       }
@@ -238,24 +237,35 @@ export default function ModuleIngenieria({
     e.preventDefault();
   };
 
-  const handleImageDrop = (e: React.DragEvent) => {
+  const handleImageDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     const files = e.dataTransfer.files;
     if (files) {
-      Array.from(files).forEach((fileItem: any) => {
-        const file = fileItem as File;
+      const filesArray = Array.from(files);
+      for (let i = 0; i < filesArray.length; i++) {
+        const file = filesArray[i] as File;
         if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            if (typeof reader.result === 'string') {
-              setReferenceImages(prev => [...prev, reader.result as string]);
+          const formData = new FormData();
+          formData.append('image', file);
+          try {
+            const res = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData
+            });
+            if (res.ok) {
+              const data = await res.json();
+              setReferenceImages(prev => [...prev, data.url]);
               const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
               setReferenceImageNames(prev => [...prev, cleanName]);
+            } else {
+               throw new Error('Server returned ' + res.status);
             }
-          };
-          reader.readAsDataURL(file);
+          } catch (err: any) {
+            console.error('Image upload failed', err);
+            alert(`Error al subir la imagen: ${err?.message || 'Error de conexión.'}`);
+          }
         }
-      });
+      }
     }
   };
 
@@ -546,8 +556,8 @@ export default function ModuleIngenieria({
         JSON.stringify({ title: 'Soldadura y ensamble base metal', description: 'Ensamble de estructura', materials: 'Microalambre' }),
         JSON.stringify({ title: 'Tratamiento y acabado final', description: 'Pintura y acabados', materials: 'Pintura electrostática' })
       ],
-      referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
-      referenceImageNames: referenceImages.length > 0 ? referenceImageNames : undefined
+      referenceImages: referenceImages.length > 0 ? referenceImages : [],
+      referenceImageNames: referenceImages.length > 0 ? referenceImageNames : []
     };
 
     onAddFicha(newFicha);
@@ -1326,6 +1336,37 @@ export default function ModuleIngenieria({
                     </div>
                   )}
 
+                  {/* PDF Dropzone */}
+                  <div
+                    className={`relative w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-3 transition-colors ${
+                      isFormFileDragOver
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-slate-300 bg-slate-50 hover:bg-slate-100'
+                    }`}
+                    onDragOver={handleFormFileDragOver}
+                    onDragLeave={handleFormFileDragLeave}
+                    onDrop={handleFormFileDrop}
+                  >
+                    <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-blue-500">
+                      <FileText size={24} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-slate-700">Arrastra un plano PDF aquí o</p>
+                      <button
+                        type="button"
+                        onClick={triggerSimulatedPdfUpload}
+                        className="text-sm font-bold text-blue-500 hover:text-blue-600 underline cursor-pointer"
+                      >
+                        explorar archivos
+                      </button>
+                    </div>
+                    {uploadedFile && (
+                      <div className="mt-2 text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                        Archivo cargado: {uploadedFile.name}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Header details */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
@@ -1366,7 +1407,15 @@ export default function ModuleIngenieria({
                   </div>
 
                   {/* COMPACT ATTACHMENT BAR (Gmail clip style) */}
-                  <div className="flex flex-col gap-2.5 bg-slate-50 border border-slate-200/80 rounded-xl p-3 shadow-3xs">
+                  <div 
+                    className={`flex flex-col gap-2.5 bg-slate-50 border rounded-xl p-3 shadow-3xs transition-all ${isImageDragOver ? 'border-blue-500 bg-blue-50/50' : 'border-slate-200/80'}`}
+                    onDragOver={(e) => { e.preventDefault(); setIsImageDragOver(true); }}
+                    onDragLeave={() => setIsImageDragOver(false)}
+                    onDrop={(e) => {
+                      setIsImageDragOver(false);
+                      handleImageDrop(e);
+                    }}
+                  >
                     <div className="flex items-center gap-2">
                       <button
                         type="button"

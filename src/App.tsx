@@ -39,8 +39,8 @@ import ModuleAdministracion from './components/ModuleAdministracion';
 import ModuleMarketing from './components/ModuleMarketing';
 import ModuleConfiguracion from './components/ModuleConfiguracion';
 import { syncToGoogleSheets } from './lib/googleSheets';
-import { db } from './lib/firebase';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { supabase } from './lib/supabase';
+
 
 
 // Safe local storage helper
@@ -93,14 +93,17 @@ const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
       setUserRole(parsed.role);
     }
 
-    if (!db.app) {
+    if (!supabase) {
       setIsAppLoaded(true);
       return () => {};
     }
-    const unsub = onSnapshot(doc(db, 'erp', 'core_state'), (docSnap) => {
-      if (docSnap.exists()) {
+
+    const loadData = async () => {
+      const { data: row, error } = await supabase.from('core_state').select('data').eq('id', 'singleton').single();
+      if (!error && row && (row as any).data) {
         isSyncingRef.current = true;
-        const data = docSnap.data();
+        const data = (row as any).data;
+
         if (data.fichas) setFichasTecnicas(data.fichas);
         if (data.orders) setOrders(data.orders);
         if (data.tasks) setProductionTasks(data.tasks);
@@ -109,25 +112,45 @@ const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
         if (data.users) setUsers(data.users);
         if (data.okrs) setOkrs(data.okrs);
         
-        setTimeout(() => {
+                setTimeout(() => {
           isSyncingRef.current = false;
         }, 500);
       }
       setIsAppLoaded(true);
-    }, (error) => {
-      console.error("Firebase sync error:", error);
-      setIsAppLoaded(true);
-    });
+    };
+    
+    loadData();
 
-    return () => unsub();
+    const channel = supabase.channel('core_state_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'core_state' }, (payload) => {
+        if (payload.new && (payload.new as any).data) {
+          isSyncingRef.current = true;
+          const data = (payload.new as any).data;
+
+        if (data.fichas) setFichasTecnicas(data.fichas);
+        if (data.orders) setOrders(data.orders);
+        if (data.tasks) setProductionTasks(data.tasks);
+        if (data.transactions) setTransactions(data.transactions);
+        if (data.alerts) setAlerts(data.alerts);
+        if (data.users) setUsers(data.users);
+        if (data.okrs) setOkrs(data.okrs);
+        
+                  setTimeout(() => {
+            isSyncingRef.current = false;
+          }, 500);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   // Sync back to Firebase on changes
   useEffect(() => {
-    if (!isAppLoaded || isSyncingRef.current || !db.app) return;
+    if (!isAppLoaded || isSyncingRef.current || !supabase) return;
     const syncData = async () => {
       try {
-        await setDoc(doc(db, 'erp', 'core_state'), {
+        const payload = JSON.parse(JSON.stringify({
           fichas: fichasTecnicas,
           orders,
           tasks: productionTasks,
@@ -136,9 +159,10 @@ const [okrs, setOkrs] = useState<OKR[]>(initialOKRs);
           users,
           okrs,
           updatedAt: new Date().toISOString()
-        }, { merge: true });
+        }));
+        await supabase.from('core_state').upsert({ id: 'singleton', data: payload });
       } catch (err) {
-        console.error("Error saving to Firebase", err);
+        console.error("Error saving to Supabase", err);
       }
     };
     
